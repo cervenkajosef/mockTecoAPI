@@ -18,9 +18,7 @@ namespace mockTecoAPI.Controllers
     public class TecoApiController : ControllerBase
     {
         private Bedroom bedroom = Bedroom.Instance;
-
         private readonly ILogger<TecoApiController> _logger;
-
         public TecoApiController(ILogger<TecoApiController> logger)
         {
             _logger = logger;
