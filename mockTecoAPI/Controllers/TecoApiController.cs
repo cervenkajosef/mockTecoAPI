@@ -43,34 +43,17 @@ namespace mockTecoAPI.Controllers
             string param = Request.Query.FirstOrDefault().Key;
             string value = Request.Query.FirstOrDefault().Value;
 
-            var jsonData = new ErrorResponse
-            {
-                error = new ErrorDetails
-                {
-                    code = "",
-                    message = "",
-                    time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-                }
-            };
-            var jsonResponse = new JObject();
+            var jsonError = ErrorTemplate();
 
             if (string.IsNullOrEmpty(param))
             {
-                jsonData.error.code = "400.001";
-                jsonData.error.message = "Bad parameters (any PLC variable is not specified)";
-                return BadResult(jsonData, StatusCodes.Status400BadRequest);
+                return BadResult(BadParameters(), StatusCodes.Status400BadRequest);
             }
             if (string.IsNullOrEmpty(value))
             {
-                jsonData.error.code = "400.005";
-                jsonData.error.message = $"Variable {param} is not found";
-
-                return BadResult(jsonData, StatusCodes.Status400BadRequest);
+                return BadResult(ErrorNotFound(param), StatusCodes.Status400BadRequest);
             }
-            param.ToLower();
             value.ToLower();
-
-
 
             if (param.StartsWith("glob_bedroom."))
             {
@@ -81,14 +64,10 @@ namespace mockTecoAPI.Controllers
                     if(value == "1" || value == "true")
                         bedroom.br_switch_1 = true;
                 }
-
                 //when param exists, TecoAPI always return Ok on setting, even with bad value
-
                 return Ok();
             }
-            jsonData.error.code = "400.005";
-            jsonData.error.message = $"Variable {param} is not found";
-            return BadResult(jsonData, StatusCodes.Status400BadRequest);
+            return BadResult(ErrorNotFound(param), StatusCodes.Status400BadRequest);
         }
 
         [HttpGet("GetObject")]
@@ -96,21 +75,11 @@ namespace mockTecoAPI.Controllers
         {
             string param = Request.Query.FirstOrDefault().Key;
 
-            var jsonData = new ErrorResponse
-            {
-                error = new ErrorDetails
-                {
-                    code = "",
-                    message = "",
-                    time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-                }
-            };
+            var jsonError = ErrorTemplate();
 
             if (string.IsNullOrEmpty(param))
             {
-                jsonData.error.code = "400.001";
-                jsonData.error.message = "Bad parameters (any PLC variable is not specified)";
-                return BadResult(jsonData, StatusCodes.Status400BadRequest);
+                return BadResult(BadParameters(), StatusCodes.Status400BadRequest);
             }
 
             var jsonResponse = new JObject();
@@ -137,19 +106,13 @@ namespace mockTecoAPI.Controllers
                     }
                     else
                     {
-                        jsonData.error.code = "400.005";
-                        jsonData.error.message = $"Variable {param} is not found";
-                        return BadResult(jsonData, StatusCodes.Status400BadRequest);
+                        return BadResult(ErrorNotFound(param), StatusCodes.Status400BadRequest);
                     }
                 }
-
                 jsonResponse[subParams.First()] = subObject;
                 return OkResult(jsonResponse);
             }
-
-            jsonData.error.code = "400.005";
-            jsonData.error.message = $"Variable {param} is not found";
-            return BadResult(jsonData, StatusCodes.Status400BadRequest);
+            return BadResult(ErrorNotFound(param), StatusCodes.Status400BadRequest);
         }
         [Route("{*path}")]
         public IActionResult DefaultRoute()
@@ -177,6 +140,34 @@ namespace mockTecoAPI.Controllers
             return new FormattedJsonResult(result, statusCode);
         }
 
+        private ErrorResponse ErrorTemplate()
+        {
+            var jsonData = new ErrorResponse
+            {
+                error = new ErrorDetails
+                {
+                    code = "",
+                    message = "",
+                    time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+                }
+            };
+            return jsonData;
+        }
+
+        private ErrorResponse ErrorNotFound(string param)
+        {
+            var jsonError = ErrorTemplate();
+            jsonError.error.code = "400.005";
+            jsonError.error.message = $"Variable {param} is not found";
+            return jsonError;
+        }
+        private ErrorResponse BadParameters()
+        {
+            var jsonError = ErrorTemplate();
+            jsonError.error.code = "400.001";
+            jsonError.error.message = "Bad parameters (any PLC variable is not specified)";
+            return jsonError;
+        }
         private class ErrorDetails
         {
             public string code { get; set; }
