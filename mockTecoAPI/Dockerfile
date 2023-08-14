@@ -5,6 +5,10 @@ WORKDIR /app
 EXPOSE 8081:80
 EXPOSE 443:443
 
+# Set environment variables for certificate path and password
+ENV CERTIFICATE_PATH="/app/path_to_your_certificate.pfx"
+ENV CERTIFICATE_PASSWORD="certificate_password"
+
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
 COPY ["mockTecoAPI/mockTecoAPI.csproj", "mockTecoAPI/"]
