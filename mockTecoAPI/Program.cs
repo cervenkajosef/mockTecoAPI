@@ -26,25 +26,25 @@ builder.Services.AddAuthorization(options =>
     });
 });
 
-var certificatePath = Environment.GetEnvironmentVariable("CERTIFICATE_PATH");
-var certificatePassword = Environment.GetEnvironmentVariable("CERTIFICATE_PASSWORD");
+//var certificatePath = Environment.GetEnvironmentVariable("CERTIFICATE_PATH");
+//var certificatePassword = Environment.GetEnvironmentVariable("CERTIFICATE_PASSWORD");
 
-if (certificatePath == null)
-    throw new ArgumentNullException(nameof(certificatePath));
+//if (certificatePath == null)
+//    throw new ArgumentNullException(nameof(certificatePath));
 
-var certificate = new X509Certificate2(certificatePath, certificatePassword);
+//var certificate = new X509Certificate2(certificatePath, certificatePassword);
 
-builder.WebHost.ConfigureKestrel((context, options) =>
-{
-    options.ListenAnyIP(443, listenOptions =>
-    {
-        listenOptions.UseHttps(certificate);
-    });
-});
+//builder.WebHost.ConfigureKestrel((context, options) =>    
+//{
+//    options.ListenAnyIP(443, listenOptions =>
+//    {
+//        listenOptions.UseHttps(certificate);
+//    });
+//});
 
-//builder.Services.AddAuthentication(
-//        CertificateAuthenticationDefaults.AuthenticationScheme)
-//    .AddCertificate();
+builder.Services.AddAuthentication(
+        CertificateAuthenticationDefaults.AuthenticationScheme)
+    .AddCertificate();
 
 var app = builder.Build();
 
@@ -57,7 +57,7 @@ if (app.Environment.IsDevelopment())
 
 //app.UseHttpsRedirection();
 
-//app.UseCertificateForwarding();
+app.UseCertificateForwarding();
 
 app.UseAuthentication();
 
