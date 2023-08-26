@@ -40,9 +40,9 @@ namespace mockTecoAPI.Controllers
         {
             try
             {
-                _logger.LogInformation("SetObject method called.");
                 string param = Request.Query.FirstOrDefault().Key;
                 string value = Request.Query.FirstOrDefault().Value;
+                _logger.LogInformation($"SetObject method called with param=value: {param}={value}");
 
                 TecoApi tecoApi = new TecoApi();
                 var result = tecoApi.SetObject(param, value);
@@ -65,14 +65,13 @@ namespace mockTecoAPI.Controllers
         {
             try
             {
-                _logger.LogInformation("GetObject method called.");
                 string param = Request.Query.FirstOrDefault().Key;
+                _logger.LogInformation($"GetObject method called with param: {param}");
 
                 TecoApi tecoApi = new TecoApi();
                 var result = tecoApi.GetObject(param);
                 if (result.status == StatusCodes.Status200OK)
                 {
-                    
                     return OkResult(result.result);
                 }
                
