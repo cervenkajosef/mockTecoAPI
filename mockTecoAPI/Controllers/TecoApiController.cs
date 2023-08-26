@@ -1,14 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using mockTecoAPI.Rooms;
-using Newtonsoft.Json;
+using mockTecoAPI.Models.Error;
+using mockTecoAPI.Models.TecoApi;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
-using System.Xml.Linq;
 
 namespace mockTecoAPI.Controllers
 {
@@ -17,7 +11,6 @@ namespace mockTecoAPI.Controllers
     [Authorize("Basic")]
     public class TecoApiController : ControllerBase
     {
-        private Bedroom bedroom = Bedroom.Instance;
         private readonly ILogger<TecoApiController> _logger;
         public TecoApiController(ILogger<TecoApiController> logger)
         {
@@ -27,94 +20,75 @@ namespace mockTecoAPI.Controllers
         [HttpGet("GetList")]
         public IActionResult GetList()
         {
-            var jsonResponse = new JObject
+            try
             {
-                ["glob_bedroom"] = new JObject()
-            };
+                _logger.LogInformation("GetList method called.");
+                TecoApi tecoApi = new TecoApi();
+                var result = tecoApi.GetList();
 
-            return OkResult(jsonResponse);
+                return OkResult(result.result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred in GetList method.");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         [HttpGet("SetObject")]
         public IActionResult SetObject()
         {
-            string param = Request.Query.FirstOrDefault().Key;
-            string value = Request.Query.FirstOrDefault().Value;
-
-            var jsonError = ErrorTemplate();
-
-            if (string.IsNullOrEmpty(param))
+            try
             {
-                return BadResult(BadParameters(), StatusCodes.Status400BadRequest);
-            }
-            if (string.IsNullOrEmpty(value))
-            {
-                return BadResult(ErrorNotFound(param), StatusCodes.Status400BadRequest);
-            }
-            value.ToLower();
+                _logger.LogInformation("SetObject method called.");
+                string param = Request.Query.FirstOrDefault().Key;
+                string value = Request.Query.FirstOrDefault().Value;
 
-            if (param.StartsWith("glob_bedroom."))
-            {
-                string[] subParams = param.Split('.');
+                TecoApi tecoApi = new TecoApi();
+                var result = tecoApi.SetObject(param, value);
 
-                if(subParams.Last() == "br_switch_1")
+                if (result.status == StatusCodes.Status200OK)
                 {
-                    if(value == "1" || value == "true")
-                        bedroom.br_switch_1 = true;
+                    return OkResult(result.result);
                 }
-                //when param exists, TecoAPI always return Ok on setting, even with bad value
-                return Ok();
+                return BadResult(result.result, result.status);
             }
-            return BadResult(ErrorNotFound(param), StatusCodes.Status400BadRequest);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred in SetObject method.");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         [HttpGet("GetObject")]
         public IActionResult GetObject()
         {
-            string param = Request.Query.FirstOrDefault().Key;
-
-            var jsonError = ErrorTemplate();
-
-            if (string.IsNullOrEmpty(param))
+            try
             {
-                return BadResult(BadParameters(), StatusCodes.Status400BadRequest);
-            }
+                _logger.LogInformation("GetObject method called.");
+                string param = Request.Query.FirstOrDefault().Key;
 
-            var jsonResponse = new JObject();
-            param.ToLower();
-
-            if (param == "glob_bedroom")
-            {
-                jsonResponse[param] = JObject.FromObject(bedroom);
-
-                return OkResult(jsonResponse);
-            }
-            else if (param.StartsWith("glob_bedroom."))
-            {
-                string[] subParams = param.Split('.');
-                JObject subObject = new JObject();
-
-                JToken currentToken = JObject.FromObject(bedroom);
-                foreach (string subParam in subParams.Skip(1))
+                TecoApi tecoApi = new TecoApi();
+                var result = tecoApi.GetObject(param);
+                if (result.status == StatusCodes.Status200OK)
                 {
-                    if (currentToken is JObject jObject && jObject.TryGetValue(subParam, out JToken subToken))
-                    {
-                        subObject[subParam] = subToken;
-                        currentToken = subToken;
-                    }
-                    else
-                    {
-                        return BadResult(ErrorNotFound(param), StatusCodes.Status400BadRequest);
-                    }
+                    
+                    return OkResult(result.result);
                 }
-                jsonResponse[subParams.First()] = subObject;
-                return OkResult(jsonResponse);
+               
+                return BadResult(result.result, result.status);
             }
-            return BadResult(ErrorNotFound(param), StatusCodes.Status400BadRequest);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred in GetObject method.");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
+
         [Route("{*path}")]
         public IActionResult DefaultRoute()
         {
+            _logger.LogInformation("DefaultRoute method called.");
             string param = Request.Query.FirstOrDefault().Key;
             var jsonData = new ErrorResponse
             {
@@ -130,51 +104,14 @@ namespace mockTecoAPI.Controllers
 
         private IActionResult OkResult(JObject result)
         {
+            _logger.LogInformation($"Method succeeded and returned:\n{result.ToString()}");
             return new FormattedJsonResult(result, StatusCodes.Status200OK);
         }
         private IActionResult BadResult(Object result, int statusCode)
         {
             JObject subObject = JObject.FromObject(result);
+            _logger.LogWarning($"GetObject method failed and returned:\n{subObject.ToString()}");
             return new FormattedJsonResult(result, statusCode);
-        }
-
-        private ErrorResponse ErrorTemplate()
-        {
-            var jsonData = new ErrorResponse
-            {
-                error = new ErrorDetails
-                {
-                    code = "",
-                    message = "",
-                    time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-                }
-            };
-            return jsonData;
-        }
-
-        private ErrorResponse ErrorNotFound(string param)
-        {
-            var jsonError = ErrorTemplate();
-            jsonError.error.code = "400.005";
-            jsonError.error.message = $"Variable {param} is not found";
-            return jsonError;
-        }
-        private ErrorResponse BadParameters()
-        {
-            var jsonError = ErrorTemplate();
-            jsonError.error.code = "400.001";
-            jsonError.error.message = "Bad parameters (any PLC variable is not specified)";
-            return jsonError;
-        }
-        private class ErrorDetails
-        {
-            public string code { get; set; }
-            public string message { get; set; }
-            public string time { get; set; }
-        }
-        private  class ErrorResponse
-        {
-            public ErrorDetails error { get; set; }
         }
     }
 }
