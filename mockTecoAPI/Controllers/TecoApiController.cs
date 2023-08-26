@@ -12,6 +12,8 @@ namespace mockTecoAPI.Controllers
     public class TecoApiController : ControllerBase
     {
         private readonly ILogger<TecoApiController> _logger;
+        string _requestId = Guid.NewGuid().ToString();
+
         public TecoApiController(ILogger<TecoApiController> logger)
         {
             _logger = logger;
@@ -22,7 +24,7 @@ namespace mockTecoAPI.Controllers
         {
             try
             {
-                _logger.LogInformation("GetList method called.");
+                _logger.LogInformation($"Session ID [{_requestId}]\nGetList method called.");
                 TecoApi tecoApi = new TecoApi();
                 var result = tecoApi.GetList();
 
@@ -42,7 +44,7 @@ namespace mockTecoAPI.Controllers
             {
                 string param = Request.Query.FirstOrDefault().Key;
                 string value = Request.Query.FirstOrDefault().Value;
-                _logger.LogInformation($"SetObject method called with param=value: {param}={value}");
+                _logger.LogInformation($"Session ID [{_requestId}]\nSetObject method called with param=value: {param}={value}");
 
                 TecoApi tecoApi = new TecoApi();
                 var result = tecoApi.SetObject(param, value);
@@ -66,7 +68,7 @@ namespace mockTecoAPI.Controllers
             try
             {
                 string param = Request.Query.FirstOrDefault().Key;
-                _logger.LogInformation($"GetObject method called with param: {param}");
+                _logger.LogInformation($"Session ID [{_requestId}]\nGetObject method called with param: {param}");
 
                 TecoApi tecoApi = new TecoApi();
                 var result = tecoApi.GetObject(param);
@@ -87,7 +89,7 @@ namespace mockTecoAPI.Controllers
         [Route("{*path}")]
         public IActionResult DefaultRoute()
         {
-            _logger.LogInformation("DefaultRoute method called.");
+            _logger.LogInformation($"Session ID [{_requestId}]\nDefaultRoute method called.");
             string param = Request.Query.FirstOrDefault().Key;
             var jsonData = new ErrorResponse
             {
@@ -103,13 +105,13 @@ namespace mockTecoAPI.Controllers
 
         private IActionResult OkResult(JObject result)
         {
-            _logger.LogInformation($"Method succeeded and returned:\n{result.ToString()}");
+            _logger.LogInformation($"Method succeeded and returned:\n{result}");
             return new FormattedJsonResult(result, StatusCodes.Status200OK);
         }
         private IActionResult BadResult(Object result, int statusCode)
         {
             JObject subObject = JObject.FromObject(result);
-            _logger.LogWarning($"GetObject method failed and returned:\n{subObject.ToString()}");
+            _logger.LogWarning($"GetObject method failed and returned:\n{subObject}");
             return new FormattedJsonResult(result, statusCode);
         }
     }
