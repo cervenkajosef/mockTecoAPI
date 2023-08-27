@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using mockTecoAPI.Models.Error;
 using mockTecoAPI.Models.TecoApi;
 using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 namespace mockTecoAPI.Controllers
 {
@@ -42,18 +43,32 @@ namespace mockTecoAPI.Controllers
         {
             try
             {
-                string param = Request.Query.FirstOrDefault().Key;
-                string value = Request.Query.FirstOrDefault().Value;
-                _logger.LogInformation($"Session ID [{_requestId}]\nSetObject method called with param=value: {param}={value}");
+                var allParams = Request.Query.ToArray();
+                var paramsString = string.Join("&", allParams.Select(param => $"{param.Key}={param.Value}"));
+                _logger.LogInformation($"Session ID [{_requestId}]\nSetObject method called with param=value: {paramsString}");
 
                 TecoApi tecoApi = new TecoApi();
-                var result = tecoApi.SetObject(param, value);
+                Result result = null;
+                foreach (var param in allParams)
+                {
+                    result = tecoApi.GetObject(param.Key);
+                    if (result.status != StatusCodes.Status200OK)
+                    {
+                        return BadResult(result.result, result.status);
+                    }
+                }
 
-                if (result.status == StatusCodes.Status200OK)
+                foreach (var param in allParams)
+                {
+                    result = tecoApi.SetObject(param.Key, param.Value);
+                }
+
+                if (result != null)
                 {
                     return OkResult(result.result);
                 }
-                return BadResult(result.result, result.status);
+
+                throw new Exception("SetObject result is null");
             }
             catch (Exception ex)
             {
@@ -67,17 +82,28 @@ namespace mockTecoAPI.Controllers
         {
             try
             {
-                string param = Request.Query.FirstOrDefault().Key;
-                _logger.LogInformation($"Session ID [{_requestId}]\nGetObject method called with param: {param}");
-
+                var allParams = Request.Query.ToArray();
+                var paramsString = string.Join("&", allParams.Select(param => $"{param.Key}"));
+                _logger.LogInformation($"Session ID [{_requestId}]\nGetObject method called with param: {paramsString}");
+                JArray jsonArray = new JArray();
                 TecoApi tecoApi = new TecoApi();
-                var result = tecoApi.GetObject(param);
-                if (result.status == StatusCodes.Status200OK)
+                
+                foreach (var param in allParams)
                 {
-                    return OkResult(result.result);
+                    var result = tecoApi.GetObject(param.Key);
+                    if (result.status == StatusCodes.Status200OK)
+                    {
+                        jsonArray.Add(result.result);
+                    }
+                    else
+                    {
+                        return BadResult(result.result, result.status);
+                    }
                 }
-               
-                return BadResult(result.result, result.status);
+
+                var jsonObject = convertJArrayToJObject(jsonArray);
+                return OkResult(jsonObject);
+                
             }
             catch (Exception ex)
             {
@@ -113,6 +139,32 @@ namespace mockTecoAPI.Controllers
             JObject subObject = JObject.FromObject(result);
             _logger.LogWarning($"GetObject method failed and returned:\n{subObject}");
             return new FormattedJsonResult(result, statusCode);
+        }
+
+        private JObject convertJArrayToJObject(JArray jsonArray)
+        {
+            JObject outputObject = new JObject();
+
+            foreach (JObject item in jsonArray)
+            {
+                foreach (var property in item.Properties())
+                {
+                    string key = property.Name;
+                    JObject subObject = (JObject)property.Value;
+
+                    if (!outputObject.ContainsKey(key))
+                    {
+                        outputObject[key] = new JObject();
+                    }
+
+                    foreach (var subProperty in subObject.Properties())
+                    {
+                        outputObject[key][subProperty.Name] = subProperty.Value;
+                    }
+                }
+            }
+
+            return outputObject;
         }
     }
 }

@@ -2,7 +2,7 @@
 {
     public class Bedroom
     {
-        private static Bedroom instance = new();
+        private static readonly Bedroom instance = new();
         private static readonly object padlock = new();
 
         private DateTime dateTime;
