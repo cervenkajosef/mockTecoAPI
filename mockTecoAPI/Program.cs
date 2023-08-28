@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using mockTecoAPI;
+using System.Net;
+using System.Reflection.PortableExecutable;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,8 +23,20 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser();
     });
 });
+var certgen = new CertGen();
+var certificate = certgen.GenerateSelfSignedCertificate();
+
+builder.WebHost.ConfigureKestrel((context, options) =>
+{
+    options.ListenAnyIP(443, listenOptions =>
+    {
+        listenOptions.UseHttps(certificate);
+    });
+    options.ListenAnyIP(80);
+});
 
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
