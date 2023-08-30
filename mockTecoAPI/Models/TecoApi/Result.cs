@@ -1,4 +1,5 @@
 ﻿using mockTecoAPI.Models.Error;
+using mockTecoAPI.Models.TecoApi.Rooms.Tools;
 using Newtonsoft.Json.Linq;
 
 namespace mockTecoAPI.Models.TecoApi
@@ -17,6 +18,15 @@ namespace mockTecoAPI.Models.TecoApi
             status = StatusCodes.Status200OK;
         }
 
+        public Result(RoomContext result)
+        {
+            var jsonResponse = new JObject
+            {
+                [result.roomName] = JObject.FromObject(result.roomObject)
+            };
+            this.result = jsonResponse;
+            status = StatusCodes.Status200OK;
+        }
         public Result()
         {
             result = null;

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using mockTecoAPI.Models.Error;
 using mockTecoAPI.Models.TecoApi;
 using Newtonsoft.Json.Linq;
-using System.Text.Json.Nodes;
 
 namespace mockTecoAPI.Controllers
 {
@@ -14,10 +13,12 @@ namespace mockTecoAPI.Controllers
     {
         private readonly ILogger<TecoApiController> _logger;
         string _requestId = Guid.NewGuid().ToString();
+        private TecoApi tecoApi;
 
         public TecoApiController(ILogger<TecoApiController> logger)
         {
             _logger = logger;
+            tecoApi = new(logger);
         }
 
         [HttpGet("GetList")]
@@ -26,7 +27,6 @@ namespace mockTecoAPI.Controllers
             try
             {
                 _logger.LogInformation($"Session ID [{_requestId}]\nGetList method called.");
-                TecoApi tecoApi = new TecoApi();
                 var result = tecoApi.GetList();
 
                 return OkResult(result.result);
@@ -47,7 +47,6 @@ namespace mockTecoAPI.Controllers
                 var paramsString = string.Join("&", allParams.Select(param => $"{param.Key}={param.Value}"));
                 _logger.LogInformation($"Session ID [{_requestId}]\nSetObject method called with param=value: {paramsString}");
 
-                TecoApi tecoApi = new TecoApi();
                 Result result = null;
                 foreach (var param in allParams)
                 {
@@ -60,6 +59,11 @@ namespace mockTecoAPI.Controllers
 
                 foreach (var param in allParams)
                 {
+                    if (param.Value == "")
+                    {
+                        var errors = new Errors();
+                        return BadResult(errors.ErrorNotFound(param.Key), StatusCodes.Status400BadRequest);
+                    }
                     result = tecoApi.SetObject(param.Key, param.Value);
                 }
 
@@ -86,7 +90,6 @@ namespace mockTecoAPI.Controllers
                 var paramsString = string.Join("&", allParams.Select(param => $"{param.Key}"));
                 _logger.LogInformation($"Session ID [{_requestId}]\nGetObject method called with param: {paramsString}");
                 JArray jsonArray = new JArray();
-                TecoApi tecoApi = new TecoApi();
                 
                 foreach (var param in allParams)
                 {
@@ -100,8 +103,7 @@ namespace mockTecoAPI.Controllers
                         return BadResult(result.result, result.status);
                     }
                 }
-
-                var jsonObject = convertJArrayToJObject(jsonArray);
+                var jsonObject = ConvertJArrayToJObject(jsonArray);
                 return OkResult(jsonObject);
                 
             }
@@ -141,16 +143,17 @@ namespace mockTecoAPI.Controllers
             return new FormattedJsonResult(result, statusCode);
         }
 
-        private JObject convertJArrayToJObject(JArray jsonArray)
+        private static JObject ConvertJArrayToJObject(JArray jsonArray)
         {
-            JObject outputObject = new JObject();
+            var outputObject = new JObject();
 
-            foreach (JObject item in jsonArray)
+            foreach (var jToken in jsonArray)
             {
+                var item = (JObject)jToken;
                 foreach (var property in item.Properties())
                 {
-                    string key = property.Name;
-                    JObject subObject = (JObject)property.Value;
+                    var key = property.Name;
+                    var subObject = (JObject)property.Value;
 
                     if (!outputObject.ContainsKey(key))
                     {
@@ -159,7 +162,7 @@ namespace mockTecoAPI.Controllers
 
                     foreach (var subProperty in subObject.Properties())
                     {
-                        outputObject[key][subProperty.Name] = subProperty.Value;
+                        outputObject[key]![subProperty.Name] = subProperty.Value;
                     }
                 }
             }

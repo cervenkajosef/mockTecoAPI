@@ -1,20 +1,34 @@
-﻿using mockTecoAPI.Models.Error;
+﻿using System;
+using System.Reflection;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using mockTecoAPI.Controllers;
+using mockTecoAPI.Models.Error;
 using mockTecoAPI.Models.TecoApi.Rooms;
+using mockTecoAPI.Models.TecoApi.Rooms.Tools;
 using Newtonsoft.Json.Linq;
 
 namespace mockTecoAPI.Models.TecoApi
 {
     public class TecoApi
     {
+        private readonly ILogger<TecoApiController> _logger;
         private Bedroom bedroom = Bedroom.Instance;
+        private PubTools _pubTools = new();
+
+        public TecoApi(ILogger<TecoApiController> logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
         public Result GetList()
         {
-            var jsonResponse = new JObject
+            JObject jsonObject = new();
+            foreach (var key in _pubTools.GetDictionary.Keys)
             {
-                ["glob_bedroom"] = new JObject()
-            };
-
-            return new Result(jsonResponse);
+                jsonObject[key] = new JObject();
+            }
+            return new Result(jsonObject);
         }
 
         public Result SetObject(string param, string value)
@@ -29,21 +43,53 @@ namespace mockTecoAPI.Models.TecoApi
             {
                 return new Result(errors.ErrorNotFound(param), StatusCodes.Status400BadRequest);
             }
-            value.ToLower();
+            var loValue = value.ToLower();
+            var loParam = param.ToLower();
 
-            if (param.StartsWith("glob_bedroom."))
+            var result = _pubTools.FindRoom(loParam, out var room);
+
+            if (result != PubTools.EResult.EWithAttr)
+                return new Result(errors.ErrorNotFound(param), StatusCodes.Status400BadRequest);
+
+            Type type = room.roomObject.GetType();
+            var roomProperty = GetCaseInsensitiveProperty(type, room.attribute);
+
+            try
             {
-                string[] subParams = param.Split('.');
-
-                if (subParams.Last() == "br_switch_1")
+                if (roomProperty?.SetMethod != null && roomProperty.CanWrite && roomProperty.SetMethod.IsPublic)
                 {
-                    if (value == "1" || value == "true")
-                        bedroom.br_switch_1 = true;
+                    dynamic setValue;
+                    var propType = roomProperty.PropertyType;
+                    if (propType == typeof(bool))
+                    {
+                        if (loValue == "1")
+                        {
+                            setValue = true;
+                        }
+                        else if (loValue == "0")
+                        {
+                            setValue = false;
+                        }
+                        else
+                            setValue = Convert.ToBoolean(loValue);
+                    }
+                    else if (propType == typeof(double))
+                        setValue = Convert.ToDouble(loValue);
+                    else if (propType == typeof(int))
+                        setValue = Convert.ToInt32(loValue);
+                    else
+                        setValue = value;
+
+                    roomProperty.SetValue(room.roomObject, setValue);
                 }
-                //when param exists, TecoAPI always return Ok on setting, even with bad value
-                return new Result();
             }
-            return new Result(errors.ErrorNotFound(param), StatusCodes.Status400BadRequest);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Setting variable failed!");
+                //when param exists, TecoAPI always return Ok on setting, even with bad value
+            }
+
+            return new Result();
         }
 
         public Result GetObject(string param)
@@ -56,35 +102,41 @@ namespace mockTecoAPI.Models.TecoApi
             }
 
             var jsonResponse = new JObject();
-            param.ToLower();
+            var loParam = param.ToLower();
 
-            if (param == "glob_bedroom")
+            var result = _pubTools.FindRoom(loParam, out var room);
+
+            if (result == PubTools.EResult.EError || room == null)
+                return new Result(errors.ErrorNotFound(param), StatusCodes.Status400BadRequest);
+
+            if (result == PubTools.EResult.ENoAttr)
+                return new Result(room);
+
+            Type type = room.roomObject.GetType();
+            var roomProperty = GetCaseInsensitiveProperty(type, room.attribute);
+
+            JObject subObject = new();
+            if (roomProperty?.GetMethod != null)
             {
-                jsonResponse[param] = JObject.FromObject(bedroom);
-
-                return new Result(jsonResponse);
-            }
-            else if (param.StartsWith("glob_bedroom."))
-            {
-                string[] subParams = param.Split('.');
-                JObject subObject = new JObject();
-
-                JToken currentToken = JObject.FromObject(bedroom);
-                var subParam = subParams.Last();
-                if (currentToken is JObject jObject && jObject.TryGetValue(subParam, out JToken subToken))
-                {
-                    subObject[subParam] = subToken;
-                    currentToken = subToken;
-                }
-                else
+                var value = roomProperty.GetValue(room.roomObject);
+                if (value == null)
                 {
                     return new Result(errors.ErrorNotFound(param), StatusCodes.Status400BadRequest);
                 }
-
-                jsonResponse[subParams.First()] = subObject;
-                return new Result(jsonResponse);
+                subObject[roomProperty.Name] = value.ToString();
             }
-            return new Result(errors.ErrorNotFound(param), StatusCodes.Status400BadRequest);
+            else
+            {
+                return new Result(errors.ErrorNotFound(param), StatusCodes.Status400BadRequest);
+            }
+
+            jsonResponse[room.roomName] = subObject;
+            return new Result(jsonResponse);
+        }
+
+        private PropertyInfo GetCaseInsensitiveProperty(Type type, string propertyName)
+        {
+            return type.GetProperty(propertyName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
         }
     }
 }

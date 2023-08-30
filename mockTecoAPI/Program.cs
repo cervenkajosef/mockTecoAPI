@@ -35,8 +35,15 @@ builder.WebHost.ConfigureKestrel((context, options) =>
     options.ListenAnyIP(80);
 });
 
-var app = builder.Build();
+builder.Services.AddHostedService<PeriodicService>();
 
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.WriteIndented = true;
+    });
+
+var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -56,3 +63,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+
