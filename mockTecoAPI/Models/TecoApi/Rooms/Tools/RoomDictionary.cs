@@ -1,8 +1,8 @@
 ﻿namespace mockTecoAPI.Models.TecoApi.Rooms.Tools
 {
-    public class PubTools
+    public class RoomDictionary
     {
-        public PubTools()
+        public RoomDictionary()
         {
             _dictionary["glob_bedroom"] = Bedroom.Instance;
             _dictionary["glob_attic"] = Attic.Instance;

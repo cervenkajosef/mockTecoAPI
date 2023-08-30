@@ -67,9 +67,13 @@ namespace mockTecoAPI.Controllers
                     result = tecoApi.SetObject(param.Key, param.Value);
                 }
 
-                if (result != null)
+                if (result != null && result.status == StatusCodes.Status200OK)
                 {
                     return OkResult(result.result);
+                }
+                if (result != null )
+                {
+                    return BadResult(result.result, result.status);
                 }
 
                 throw new Exception("SetObject result is null");
@@ -90,7 +94,7 @@ namespace mockTecoAPI.Controllers
                 var paramsString = string.Join("&", allParams.Select(param => $"{param.Key}"));
                 _logger.LogInformation($"Session ID [{_requestId}]\nGetObject method called with param: {paramsString}");
                 JArray jsonArray = new JArray();
-                
+
                 foreach (var param in allParams)
                 {
                     var result = tecoApi.GetObject(param.Key);
@@ -105,7 +109,7 @@ namespace mockTecoAPI.Controllers
                 }
                 var jsonObject = ConvertJArrayToJObject(jsonArray);
                 return OkResult(jsonObject);
-                
+
             }
             catch (Exception ex)
             {

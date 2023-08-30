@@ -1,7 +1,4 @@
-﻿using System;
-using System.Reflection;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
+﻿using System.Reflection;
 using mockTecoAPI.Controllers;
 using mockTecoAPI.Models.Error;
 using mockTecoAPI.Models.TecoApi.Rooms;
@@ -14,7 +11,7 @@ namespace mockTecoAPI.Models.TecoApi
     {
         private readonly ILogger<TecoApiController> _logger;
         private Bedroom bedroom = Bedroom.Instance;
-        private PubTools _pubTools = new();
+        private RoomDictionary _roomDictionary = new();
 
         public TecoApi(ILogger<TecoApiController> logger)
         {
@@ -24,7 +21,7 @@ namespace mockTecoAPI.Models.TecoApi
         public Result GetList()
         {
             JObject jsonObject = new();
-            foreach (var key in _pubTools.GetDictionary.Keys)
+            foreach (var key in _roomDictionary.GetDictionary.Keys)
             {
                 jsonObject[key] = new JObject();
             }
@@ -46,9 +43,9 @@ namespace mockTecoAPI.Models.TecoApi
             var loValue = value.ToLower();
             var loParam = param.ToLower();
 
-            var result = _pubTools.FindRoom(loParam, out var room);
+            var result = _roomDictionary.FindRoom(loParam, out var room);
 
-            if (result != PubTools.EResult.EWithAttr)
+            if (result != RoomDictionary.EResult.EWithAttr)
                 return new Result(errors.ErrorNotFound(param), StatusCodes.Status400BadRequest);
 
             Type type = room.roomObject.GetType();
@@ -104,12 +101,12 @@ namespace mockTecoAPI.Models.TecoApi
             var jsonResponse = new JObject();
             var loParam = param.ToLower();
 
-            var result = _pubTools.FindRoom(loParam, out var room);
+            var result = _roomDictionary.FindRoom(loParam, out var room);
 
-            if (result == PubTools.EResult.EError || room == null)
+            if (result == RoomDictionary.EResult.EError || room == null)
                 return new Result(errors.ErrorNotFound(param), StatusCodes.Status400BadRequest);
 
-            if (result == PubTools.EResult.ENoAttr)
+            if (result == RoomDictionary.EResult.ENoAttr)
                 return new Result(room);
 
             Type type = room.roomObject.GetType();

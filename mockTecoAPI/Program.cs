@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
 using mockTecoAPI;
-using System.Net;
-using System.Reflection.PortableExecutable;
 
 var builder = WebApplication.CreateBuilder(args);
 
