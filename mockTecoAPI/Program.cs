@@ -30,7 +30,7 @@ builder.WebHost.ConfigureKestrel((context, options) =>
     {
         listenOptions.UseHttps(certificate);
     });
-    options.ListenAnyIP(80);
+    options.ListenAnyIP(8085);
 });
 
 builder.Services.AddHostedService<PeriodicService>();

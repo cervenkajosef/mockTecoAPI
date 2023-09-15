@@ -1,7 +1,6 @@
 ﻿using System.Reflection;
 using mockTecoAPI.Controllers;
 using mockTecoAPI.Models.Error;
-using mockTecoAPI.Models.TecoApi.Rooms;
 using mockTecoAPI.Models.TecoApi.Rooms.Tools;
 using Newtonsoft.Json.Linq;
 
@@ -10,7 +9,6 @@ namespace mockTecoAPI.Models.TecoApi
     public class TecoApi
     {
         private readonly ILogger<TecoApiController> _logger;
-        private Bedroom bedroom = Bedroom.Instance;
         private RoomDictionary _roomDictionary = new();
 
         public TecoApi(ILogger<TecoApiController> logger)
