@@ -118,7 +118,7 @@ namespace mockTecoAPI.Models.TecoApi
                 {
                     return new Result(errors.ErrorNotFound(param), StatusCodes.Status400BadRequest);
                 }
-                subObject[roomProperty.Name] = value.ToString();
+                subObject[roomProperty.Name] = JToken.FromObject(value);
             }
             else
             {
